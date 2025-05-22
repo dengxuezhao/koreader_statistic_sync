@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}登录 - KOmpanion{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-box">
+        <h2>登录</h2>
+        <div id="error-message" class="error-message" style="display: none;"></div>
+        <form id="login-form">
+            <div class="form-group">
+                <label for="username">用户名</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <button type="submit" class="button primary" style="width: 100%;">登录</button>
+        </form>
+        <div class="auth-info">
+            <p>使用在环境变量中设置的管理员账户登录。</p>
+            <p>默认用户名: admin</p>
+            <p>默认密码: password</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const loginForm = document.getElementById('login-form');
+        const errorMessage = document.getElementById('error-message');
+        
+        loginForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            // 隐藏之前的错误消息
+            errorMessage.style.display = 'none';
+            
+            // 发送登录请求
+            fetch('/api/v1/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: username,
+                    password: password
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.detail || '登录失败');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                // 登录成功，重定向到控制台
+                window.location.href = '/dashboard';
+            })
+            .catch(error => {
+                // 显示错误消息
+                errorMessage.textContent = error.message;
+                errorMessage.style.display = 'block';
+            });
+        });
+    });
+</script>
+{% endblock %} 

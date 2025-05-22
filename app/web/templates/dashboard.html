@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}控制台 - KOmpanion{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="welcome-section">
+        <h2>欢迎回来，{{ user.username }}</h2>
+        <p>通过KOmpanion管理您的电子书并与KOReader设备同步。</p>
+    </div>
+    
+    <div class="dashboard-stats">
+        <div class="stat-card">
+            <h3>书籍</h3>
+            <p class="stat-number" id="book-count">-</p>
+            <a href="/books" class="button secondary">管理书籍</a>
+        </div>
+        <div class="stat-card">
+            <h3>设备</h3>
+            <p class="stat-number" id="device-count">-</p>
+            <a href="/devices" class="button secondary">管理设备</a>
+        </div>
+    </div>
+    
+    <div class="dashboard-sections">
+        <div class="section-card">
+            <h3>书库管理</h3>
+            <p>上传、分类和管理您的电子书集合，支持多种格式。</p>
+            <a href="/books" class="button primary">前往书库</a>
+        </div>
+        
+        <div class="section-card">
+            <h3>设备管理</h3>
+            <p>管理您的KOReader设备，设置同步和访问权限。</p>
+            <a href="/devices" class="button primary">管理设备</a>
+        </div>
+        
+        <div class="section-card">
+            <h3>OPDS目录</h3>
+            <p>通过OPDS协议访问您的书库，与多种阅读器兼容。</p>
+            <div class="info-box">
+                <p>您的OPDS地址：</p>
+                <code id="opds-url">{{ request.base_url }}opds/</code>
+                <button class="button mini" onclick="copyToClipboard('opds-url')">复制</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // 加载统计数据
+    function loadStats() {
+        // 获取书籍数量
+        fetch('/api/v1/books?page=1&page_size=1')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('book-count').textContent = data.total || 0;
+            })
+            .catch(error => {
+                console.error('获取书籍数量失败:', error);
+                document.getElementById('book-count').textContent = '获取失败';
+            });
+            
+        // 获取设备数量
+        fetch('/api/v1/auth/devices')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('device-count').textContent = data.length || 0;
+            })
+            .catch(error => {
+                console.error('获取设备数量失败:', error);
+                document.getElementById('device-count').textContent = '获取失败';
+            });
+    }
+    
+    // 复制到剪贴板
+    function copyToClipboard(elementId) {
+        const text = document.getElementById(elementId).textContent;
+        navigator.clipboard.writeText(text).then(
+            function() {
+                alert('已复制到剪贴板');
+            }, 
+            function(err) {
+                console.error('复制失败:', err);
+                alert('复制失败');
+            }
+        );
+    }
+    
+    // 页面加载完成后执行
+    document.addEventListener('DOMContentLoaded', function() {
+        loadStats();
+    });
+</script>
+{% endblock %} 

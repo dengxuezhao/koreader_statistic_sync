@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block title %}设备管理 - KOmpanion{% endblock %}
+
+{% block content %}
+<div class="devices-container">
+    <h2>设备管理</h2>
+    
+    <div class="device-add-section">
+        <h3>添加设备</h3>
+        <form id="device-add-form">
+            <div class="form-group">
+                <label for="device-name">设备名称</label>
+                <input type="text" id="device-name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="device-password">设备密码</label>
+                <input type="password" id="device-password" name="password" required>
+                <small>注意：此密码将用于KOReader设备与服务器之间的认证。</small>
+            </div>
+            <button type="submit" class="button primary">添加设备</button>
+        </form>
+    </div>
+    
+    <h3>设备列表</h3>
+    <div id="device-list-container">
+        <!-- 设备列表将通过JavaScript动态加载 -->
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // 页面加载完成后执行
+    document.addEventListener('DOMContentLoaded', function() {
+        // 加载设备列表
+        loadDevices();
+        
+        // 添加设备表单提交事件
+        document.getElementById('device-add-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            addDevice();
+        });
+    });
+    
+    // 加载设备列表
+    function loadDevices() {
+        const deviceListContainer = document.getElementById('device-list-container');
+        
+        // 显示加载状态
+        deviceListContainer.innerHTML = '<div class="loading">加载中...</div>';
+        
+        // 发送请求
+        fetch('/api/v1/auth/devices')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('获取设备列表失败');
+                }
+                return response.json();
+            })
+            .then(devices => {
+                // 清空容器
+                deviceListContainer.innerHTML = '';
+                
+                // 检查是否有设备
+                if (devices.length === 0) {
+                    deviceListContainer.innerHTML = `
+                        <div class="empty-state">
+                            <h3>暂无设备</h3>
+                            <p>使用上方的表单添加您的第一个设备。</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // 创建设备表格
+                const table = document.createElement('table');
+                table.className = 'device-table';
+                
+                // 表头
+                const thead = document.createElement('thead');
+                thead.innerHTML = `
+                    <tr>
+                        <th>设备名称</th>
+                        <th>添加时间</th>
+                        <th>操作</th>
+                    </tr>
+                `;
+                table.appendChild(thead);
+                
+                // 表体
+                const tbody = document.createElement('tbody');
+                devices.forEach(device => {
+                    const tr = document.createElement('tr');
+                    
+                    // 格式化日期
+                    let createdDate = '未知';
+                    if (device.created_at) {
+                        const date = new Date(device.created_at);
+                        createdDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                    }
+                    
+                    tr.innerHTML = `
+                        <td>${device.name}</td>
+                        <td>${createdDate}</td>
+                        <td>
+                            <button class="button mini danger" onclick="deleteDevice('${device.name}')">删除</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                table.appendChild(tbody);
+                
+                deviceListContainer.appendChild(table);
+            })
+            .catch(error => {
+                console.error('获取设备列表失败:', error);
+                deviceListContainer.innerHTML = `
+                    <div class="error-state">
+                        <h3>加载失败</h3>
+                        <p>${error.message}</p>
+                        <button class="button secondary" onclick="loadDevices()">重试</button>
+                    </div>
+                `;
+            });
+    }
+    
+    // 添加设备
+    function addDevice() {
+        const nameInput = document.getElementById('device-name');
+        const passwordInput = document.getElementById('device-password');
+        
+        if (!nameInput.value.trim()) {
+            alert('请输入设备名称');
+            return;
+        }
+        
+        if (!passwordInput.value.trim()) {
+            alert('请输入设备密码');
+            return;
+        }
+        
+        // 发送请求
+        fetch('/api/v1/auth/devices', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: nameInput.value.trim(),
+                password: passwordInput.value
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.detail || '添加设备失败');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            // 清空表单
+            nameInput.value = '';
+            passwordInput.value = '';
+            
+            // 显示设备信息
+            alert(`设备添加成功！\n设备名称: ${data.name}\n设备密码: ${data.password}\n\n请记住这些信息，它们将用于KOReader设备的配置。`);
+            
+            // 重新加载设备列表
+            loadDevices();
+        })
+        .catch(error => {
+            alert(error.message);
+        });
+    }
+    
+    // 删除设备
+    function deleteDevice(deviceName) {
+        if (!confirm(`确定要删除设备 "${deviceName}" 吗？此操作不可恢复，并且会导致该设备无法再同步数据。`)) {
+            return;
+        }
+        
+        // 发送请求
+        fetch(`/api/v1/auth/devices/${deviceName}`, {
+            method: 'DELETE'
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.detail || '删除设备失败');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            alert('设备已删除');
+            loadDevices(); // 重新加载设备列表
+        })
+        .catch(error => {
+            alert(error.message);
+        });
+    }
+</script>
+{% endblock %} 

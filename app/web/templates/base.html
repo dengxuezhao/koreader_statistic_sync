@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}KOmpanion - KOReader伴侣{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}">
+    <link rel="shortcut icon" href="{{ url_for('static', path='/images/favicon.ico') }}" type="image/x-icon">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo">
+                <h1>KOmpanion</h1>
+                <p>KOReader伴侣</p>
+            </div>
+            <nav>
+                <ul>
+                    {% if user %}
+                    <li><a href="/dashboard">控制台</a></li>
+                    <li><a href="/books">书库</a></li>
+                    <li><a href="/devices">设备</a></li>
+                    <li><a href="#" id="logout-link">登出</a></li>
+                    {% else %}
+                    <li><a href="/login">登录</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+            <button class="menu-toggle">&#9776;</button>
+        </div>
+    </header>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2023-2024 KOmpanion. 基于<a href="https://github.com/koreader/koreader" target="_blank">KOReader</a>构建。</p>
+            <ul class="footer-links">
+                <li><a href="#">文档</a></li>
+                <li><a href="#">贡献</a></li>
+                <li><a href="https://github.com/yourusername/kompanion" target="_blank">GitHub</a></li>
+            </ul>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', path='/js/main.js') }}"></script>
+    {% if user %}
+    <script>
+        // 登出功能
+        document.getElementById('logout-link').addEventListener('click', function(e) {
+            e.preventDefault();
+            fetch('/api/v1/auth/web/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                window.location.href = '/login';
+            })
+            .catch(error => {
+                console.error('登出失败:', error);
+            });
+        });
+    </script>
+    {% endif %}
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html> 

@@ -1,0 +1,393 @@
+{% extends "base.html" %}
+
+{% block title %}书库管理 - KOmpanion{% endblock %}
+
+{% block extra_head %}
+<style>
+    .book-upload-section {
+        margin-bottom: 2rem;
+        padding: 1.5rem;
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+    }
+    
+    .book-list-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .book-card {
+        background-color: #fff;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .book-cover {
+        height: 200px;
+        overflow: hidden;
+        background-color: #eee;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .book-cover img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+    
+    .book-info {
+        padding: 1rem;
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .book-title {
+        font-size: 1.1rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+    
+    .book-author {
+        font-size: 0.9rem;
+        color: #666;
+        margin-bottom: 0.5rem;
+    }
+    
+    .book-actions {
+        display: flex;
+        justify-content: space-between;
+        margin-top: auto;
+        padding-top: 1rem;
+    }
+    
+    .pagination {
+        display: flex;
+        justify-content: center;
+        margin-top: 2rem;
+    }
+    
+    .pagination .page-item {
+        margin: 0 0.25rem;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+    }
+    
+    .upload-progress {
+        margin-top: 1rem;
+        display: none;
+    }
+    
+    .progress-bar {
+        height: 10px;
+        background-color: #eee;
+        border-radius: 5px;
+        overflow: hidden;
+    }
+    
+    .progress-bar-fill {
+        height: 100%;
+        background-color: #4caf50;
+        width: 0%;
+        transition: width 0.3s ease;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="books-container">
+    <h2>书库管理</h2>
+    
+    <div class="book-upload-section">
+        <h3>上传书籍</h3>
+        <form id="book-upload-form" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="book-file">选择电子书文件</label>
+                <input type="file" id="book-file" name="file" accept=".epub,.mobi,.pdf,.txt,.azw,.azw3">
+            </div>
+            <button type="submit" class="button primary">上传</button>
+        </form>
+        <div class="upload-progress" id="upload-progress">
+            <p>上传中... <span id="upload-progress-text">0%</span></p>
+            <div class="progress-bar">
+                <div class="progress-bar-fill" id="upload-progress-bar"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="books-filter-section">
+        <div class="form-group">
+            <label for="sort-by">排序方式</label>
+            <select id="sort-by">
+                <option value="created_at">上传时间</option>
+                <option value="title">书名</option>
+                <option value="author">作者</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="sort-order">排序顺序</label>
+            <select id="sort-order">
+                <option value="desc">降序</option>
+                <option value="asc">升序</option>
+            </select>
+        </div>
+        <button id="apply-filter" class="button secondary">应用</button>
+    </div>
+    
+    <div id="book-list-container" class="book-list-container">
+        <!-- 书籍列表将通过JavaScript动态加载 -->
+    </div>
+    
+    <div id="pagination" class="pagination">
+        <!-- 分页控件将通过JavaScript动态加载 -->
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // 当前页码和每页数量
+    let currentPage = 1;
+    const pageSize = 12;
+    let sortBy = 'created_at';
+    let sortOrder = 'desc';
+    
+    // 页面加载完成后执行
+    document.addEventListener('DOMContentLoaded', function() {
+        // 加载书籍列表
+        loadBooks();
+        
+        // 上传表单提交事件
+        document.getElementById('book-upload-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            uploadBook();
+        });
+        
+        // 排序和过滤应用按钮
+        document.getElementById('apply-filter').addEventListener('click', function() {
+            sortBy = document.getElementById('sort-by').value;
+            sortOrder = document.getElementById('sort-order').value;
+            currentPage = 1;
+            loadBooks();
+        });
+    });
+    
+    // 加载书籍列表
+    function loadBooks() {
+        const bookListContainer = document.getElementById('book-list-container');
+        const paginationContainer = document.getElementById('pagination');
+        
+        // 显示加载状态
+        bookListContainer.innerHTML = '<div class="loading">加载中...</div>';
+        
+        // 构建API URL
+        const apiUrl = `/api/v1/books?page=${currentPage}&page_size=${pageSize}&sort_by=${sortBy}&sort_order=${sortOrder}`;
+        
+        // 发送请求
+        fetch(apiUrl)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('获取书籍列表失败');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // 清空容器
+                bookListContainer.innerHTML = '';
+                
+                // 检查是否有书籍
+                if (data.items.length === 0) {
+                    bookListContainer.innerHTML = `
+                        <div class="empty-state">
+                            <h3>暂无书籍</h3>
+                            <p>使用上方的上传功能添加您的第一本书籍。</p>
+                        </div>
+                    `;
+                    paginationContainer.innerHTML = '';
+                    return;
+                }
+                
+                // 渲染书籍列表
+                data.items.forEach(book => {
+                    bookListContainer.appendChild(createBookCard(book));
+                });
+                
+                // 渲染分页
+                renderPagination(paginationContainer, data.page, data.pages);
+            })
+            .catch(error => {
+                console.error('获取书籍列表失败:', error);
+                bookListContainer.innerHTML = `
+                    <div class="error-state">
+                        <h3>加载失败</h3>
+                        <p>${error.message}</p>
+                        <button class="button secondary" onclick="loadBooks()">重试</button>
+                    </div>
+                `;
+            });
+    }
+    
+    // 创建书籍卡片
+    function createBookCard(book) {
+        const bookCard = document.createElement('div');
+        bookCard.className = 'book-card';
+        
+        // 封面图片URL
+        const coverUrl = book.cover_url || `/api/v1/books/${book.id}/cover`;
+        
+        bookCard.innerHTML = `
+            <div class="book-cover">
+                <img src="${coverUrl}" alt="${book.title}" onerror="this.onerror=null; this.src='/static/images/book-placeholder.png';">
+            </div>
+            <div class="book-info">
+                <div class="book-title">${book.title || '未知标题'}</div>
+                <div class="book-author">${book.author || '未知作者'}</div>
+                <div class="book-actions">
+                    <a href="/api/v1/books/${book.id}/download" class="button mini">下载</a>
+                    <button class="button mini danger" onclick="deleteBook('${book.id}')">删除</button>
+                </div>
+            </div>
+        `;
+        
+        return bookCard;
+    }
+    
+    // 渲染分页
+    function renderPagination(container, currentPage, totalPages) {
+        container.innerHTML = '';
+        
+        if (totalPages <= 1) {
+            return;
+        }
+        
+        const createPageItem = (page, text, isActive = false, isDisabled = false) => {
+            const pageItem = document.createElement('div');
+            pageItem.className = `page-item ${isActive ? 'active' : ''} ${isDisabled ? 'disabled' : ''}`;
+            
+            const button = document.createElement('button');
+            button.className = 'button mini';
+            button.textContent = text;
+            
+            if (!isDisabled) {
+                button.addEventListener('click', () => {
+                    if (page > 0 && page <= totalPages) {
+                        window.currentPage = page;
+                        loadBooks();
+                    }
+                });
+            } else {
+                button.disabled = true;
+            }
+            
+            pageItem.appendChild(button);
+            return pageItem;
+        };
+        
+        // 添加"上一页"按钮
+        container.appendChild(createPageItem(currentPage - 1, '上一页', false, currentPage === 1));
+        
+        // 添加页码按钮
+        for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) {
+            container.appendChild(createPageItem(i, i.toString(), i === currentPage));
+        }
+        
+        // 添加"下一页"按钮
+        container.appendChild(createPageItem(currentPage + 1, '下一页', false, currentPage === totalPages));
+    }
+    
+    // 上传书籍
+    function uploadBook() {
+        const fileInput = document.getElementById('book-file');
+        const progressContainer = document.getElementById('upload-progress');
+        const progressBar = document.getElementById('upload-progress-bar');
+        const progressText = document.getElementById('upload-progress-text');
+        
+        if (!fileInput.files.length) {
+            alert('请选择一个文件');
+            return;
+        }
+        
+        const file = fileInput.files[0];
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        // 显示进度条
+        progressContainer.style.display = 'block';
+        progressBar.style.width = '0%';
+        progressText.textContent = '0%';
+        
+        // 创建XHR对象，以便监控上传进度
+        const xhr = new XMLHttpRequest();
+        
+        xhr.upload.addEventListener('progress', function(e) {
+            if (e.lengthComputable) {
+                const percentComplete = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = percentComplete + '%';
+                progressText.textContent = percentComplete + '%';
+            }
+        });
+        
+        xhr.addEventListener('load', function() {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                // 上传成功
+                fileInput.value = '';
+                progressContainer.style.display = 'none';
+                alert('书籍上传成功');
+                loadBooks(); // 重新加载书籍列表
+            } else {
+                // 上传失败
+                progressContainer.style.display = 'none';
+                let errorMessage = '上传失败';
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    errorMessage = response.detail || errorMessage;
+                } catch (e) {}
+                alert(errorMessage);
+            }
+        });
+        
+        xhr.addEventListener('error', function() {
+            progressContainer.style.display = 'none';
+            alert('上传失败，请检查网络连接');
+        });
+        
+        xhr.open('POST', '/api/v1/books/');
+        xhr.send(formData);
+    }
+    
+    // 删除书籍
+    function deleteBook(bookId) {
+        if (!confirm('确定要删除这本书吗？此操作不可恢复。')) {
+            return;
+        }
+        
+        fetch(`/api/v1/books/${bookId}`, {
+            method: 'DELETE'
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('删除失败');
+            }
+            return response.json();
+        })
+        .then(data => {
+            alert('书籍已删除');
+            loadBooks(); // 重新加载书籍列表
+        })
+        .catch(error => {
+            alert('删除失败: ' + error.message);
+        });
+    }
+</script>
+{% endblock %} 

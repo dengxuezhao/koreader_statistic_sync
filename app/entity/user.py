@@ -173,4 +173,25 @@ class SessionResponse(BaseModel):
     session_key: str
     
     class Config:
+        orm_mode = True
+
+
+# 添加新的Pydantic模型用于Web会话和Token认证
+class UserSessionInfo(BaseModel):
+    """用于Web会话中存储的用户信息"""
+    id: str
+    username: str
+    is_superuser: bool = False
+    
+    class Config:
+        orm_mode = True
+
+
+class Token(BaseModel):
+    """用于OAuth2 Token响应"""
+    access_token: str
+    token_type: str
+    expires_in: int
+    
+    class Config:
         orm_mode = True 
