@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KOmpanion - KOReader伴侣</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}">
+    <link rel="shortcut icon" href="{{ url_for('static', path='/images/favicon.ico') }}" type="image/x-icon">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo">
+                <h1>KOmpanion</h1>
+                <p>KOReader伴侣</p>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="#书库">书库</a></li>
+                    <li><a href="#统计">统计</a></li>
+                    <li><a href="#设置">设置</a></li>
+                    <li><a href="#关于">关于</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section id="欢迎" class="hero">
+            <div class="container">
+                <h2>欢迎使用KOmpanion</h2>
+                <p>您的KOReader伴侣应用，帮助您管理电子书、同步阅读进度、查看阅读统计。</p>
+                <div class="cta-buttons">
+                    <a href="#上传" class="button primary">上传电子书</a>
+                    <a href="#同步" class="button secondary">同步设备</a>
+                </div>
+            </div>
+        </section>
+
+        <section id="功能" class="features">
+            <div class="container">
+                <h2>主要功能</h2>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h3>书库管理</h3>
+                        <p>上传、分类和管理您的电子书集合，支持多种格式。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>OPDS目录</h3>
+                        <p>通过OPDS协议访问您的书库，与多种阅读器兼容。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>WebDAV同步</h3>
+                        <p>与KOReader设备同步阅读进度和书签。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>阅读统计</h3>
+                        <p>查看您的阅读时间、进度和习惯统计。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="开始使用" class="getting-started">
+            <div class="container">
+                <h2>开始使用</h2>
+                <ol class="steps">
+                    <li>
+                        <h3>设置您的KOReader</h3>
+                        <p>在KOReader设置中配置同步服务器地址。</p>
+                    </li>
+                    <li>
+                        <h3>上传您的书籍</h3>
+                        <p>通过Web界面上传您的电子书。</p>
+                    </li>
+                    <li>
+                        <h3>同步您的设备</h3>
+                        <p>连接您的KOReader设备并同步数据。</p>
+                    </li>
+                </ol>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2023-2024 KOmpanion. 基于<a href="https://github.com/koreader/koreader" target="_blank">KOReader</a>构建。</p>
+            <ul class="footer-links">
+                <li><a href="#文档">文档</a></li>
+                <li><a href="#贡献">贡献</a></li>
+                <li><a href="https://github.com/yourusername/kompanion" target="_blank">GitHub</a></li>
+            </ul>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', path='/js/main.js') }}"></script>
+</body>
+</html> 
