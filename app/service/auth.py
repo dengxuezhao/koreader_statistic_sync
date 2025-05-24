@@ -12,16 +12,19 @@ from fastapi import Request, HTTPException, status
 from app.entity.user import (
     User, Device, 
     IncorrectPasswordError, 
-    UserAlreadyExistsError
+    UserAlreadyExistsError,
+    UserSessionInfo
 )
 from app.repository.user_repo import UserRepo
+from app.config import Settings
 
 
 class AuthService:
     """认证服务，处理用户认证和会话管理"""
     
-    def __init__(self, user_repo: UserRepo):
+    def __init__(self, user_repo: UserRepo, settings: Settings):
         self.user_repo = user_repo
+        self.settings = settings
         self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
         self.logger = logging.getLogger(__name__)
     
@@ -209,6 +212,21 @@ class AuthService:
         使用MD5哈希密码（KOReader同步兼容）
         """
         return hashlib.md5(password.encode()).hexdigest()
+
+    async def authenticate_admin_via_config(self, username: str, password: str) -> Optional[UserSessionInfo]:
+        """
+        Authenticates the admin user based on configuration settings (plain text password).
+        """
+        admin_username = self.settings.AUTH_USERNAME
+        admin_password = self.settings.AUTH_PASSWORD
+
+        self.logger.debug(f"Attempting admin authentication for user: {username} via config.")
+        if username == admin_username and password == admin_password:
+            self.logger.info(f"Admin user {username} authenticated successfully via config.")
+            return UserSessionInfo(id="config_admin_001", username=username, is_superuser=True)
+        else:
+            self.logger.warning(f"Admin authentication failed for user: {username} via config. Credentials did not match.")
+            return None
 
 
 # FastAPI依赖函数，用于从请求中获取当前认证用户

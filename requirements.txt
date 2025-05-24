@@ -4,6 +4,7 @@ sqlalchemy==2.0.28
 asyncpg==0.29.0
 alembic==1.13.1
 pydantic==2.6.3
+pydantic-settings==2.2.1
 python-multipart==0.0.6
 passlib==1.7.4
 bcrypt==4.1.2

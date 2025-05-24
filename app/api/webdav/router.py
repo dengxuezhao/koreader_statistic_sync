@@ -4,8 +4,8 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 from typing import Annotated, Optional
 import base64
 
-from app.dependencies import get_auth_service, get_reading_stats
-from app.service import AuthService, ReadingStats
+from app.dependencies import get_auth_service
+from app.service import AuthService
 
 
 # 创建一个单独的路由器，不会被自动包含在API中
@@ -39,9 +39,11 @@ async def basic_auth(
         )
     
     # 解码Basic认证
+    device_name: str = ""
+    password: str = ""
     try:
         auth_decoded = base64.b64decode(auth_header[6:]).decode("utf-8")
-        username, password = auth_decoded.split(":", 1)
+        device_name, password = auth_decoded.split(":", 1)
     except Exception as e:
         logger.error(f"解码Basic认证失败: {str(e)}")
         raise HTTPException(
@@ -50,17 +52,19 @@ async def basic_auth(
             headers={"WWW-Authenticate": "Basic realm=\"KOmpanion WebDAV\""}
         )
     
-    # 检查设备密码
-    if not await auth_service.check_device_password(username, password, plain=True):
+    # 检查设备密码 (KOReader sends plain password for WebDAV Basic Auth, so plain=False)
+    if not await auth_service.check_device_password(device_name, password, plain=False):
         # 如果密码不正确，返回401
+        logger.warning(f"WebDAV authentication failed for device: {device_name}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="用户名或密码不正确",
             headers={"WWW-Authenticate": "Basic realm=\"KOmpanion WebDAV\""}
         )
     
+    logger.info(f"WebDAV authentication successful for device: {device_name}")
     # 返回设备名称
-    return username
+    return device_name
 
 
 @router.api_route("/", methods=["PROPFIND"])
@@ -72,7 +76,6 @@ async def propfind(
     处理PROPFIND请求
     
     WebDAV的PROPFIND方法用于获取资源的属性，包括目录列表。
-    这里返回一个静态的XML响应，表示一个空目录。
     """
     logger.info(f"WebDAV PROPFIND请求: 设备={device_name}")
     

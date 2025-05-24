@@ -312,7 +312,7 @@ async def web_login(
     # 这里假设AuthService有方法来验证管理员账户
     # 注意：README 中 KOMPANION_AUTH_USERNAME 和 KOMPANION_AUTH_PASSWORD 是环境变量
     # AuthService 需要能访问这些配置来验证管理员
-    user = await auth_service.authenticate_admin(form_data.username, form_data.password)
+    user = await auth_service.authenticate_admin_via_config(form_data.username, form_data.password)
     if not user:
         logger.warning(f"网页登录失败: 用户名 {form_data.username} 认证失败")
         raise HTTPException(

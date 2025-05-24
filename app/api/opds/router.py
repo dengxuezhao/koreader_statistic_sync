@@ -5,9 +5,8 @@ import base64
 from datetime import datetime
 import os
 
-from app.dependencies import get_auth_service, get_book_shelf
+from app.dependencies import get_auth_service
 from app.service import AuthService
-from app.service.book_shelf import BookShelf
 from app.api.opds.opds import (
     Entry, build_feed, books_to_entries, form_navigation_links,
     ATOM_TIME_FORMAT, DIR_MIME
@@ -23,7 +22,7 @@ logger = logging.getLogger(__name__)
 async def basic_auth(
     request: Request, 
     auth_service: Annotated[AuthService, Depends(get_auth_service)]
-) -> Optional[str]:
+) -> str:
     """
     OPDS基本认证中间件
     
@@ -32,12 +31,13 @@ async def basic_auth(
         auth_service: 认证服务实例
         
     Returns:
-        Optional[str]: 设备名称，如果认证失败则返回None
+        str: 设备名称或用户名，如果认证失败则抛出HTTPException
     """
     # 获取Authorization头
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Basic "):
         # 如果没有Authorization头，返回401
+        logger.debug("OPDS Basic Auth: Missing or invalid Authorization header.")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="未认证",
@@ -45,9 +45,11 @@ async def basic_auth(
         )
     
     # 解码Basic认证
+    identifier: str = ""
+    password: str = ""
     try:
         auth_decoded = base64.b64decode(auth_header[6:]).decode("utf-8")
-        username, password = auth_decoded.split(":", 1)
+        identifier, password = auth_decoded.split(":", 1)
     except Exception as e:
         logger.error(f"解码Basic认证失败: {str(e)}")
         raise HTTPException(
@@ -56,21 +58,25 @@ async def basic_auth(
             headers={"WWW-Authenticate": "Basic realm=\"KOmpanion OPDS\""}
         )
     
-    # 尝试设备认证
-    try:
-        if await auth_service.check_device_password(username, password, plain=True):
-            return username
-    except Exception:
-        pass
+    # 尝试设备认证 (KOReader OPDS often uses device credentials, sends plain password)
+    logger.debug(f"OPDS Basic Auth: Attempting device auth for identifier: {identifier}")
+    if await auth_service.check_device_password(identifier, password, plain=False):
+        logger.info(f"OPDS authentication successful for device: {identifier}")
+        return identifier
     
-    # 尝试用户认证
+    # 尝试用户认证 (if device auth fails)
+    logger.debug(f"OPDS Basic Auth: Device auth failed for {identifier}, attempting user auth.")
     try:
-        if await auth_service.check_password(username, password):
-            return username
-    except Exception:
-        pass
+        user = await auth_service.user_repo.get_user_by_username(identifier)
+        if user and auth_service._verify_password(password, user.hashed_password):
+            logger.info(f"OPDS authentication successful for user: {identifier}")
+            return identifier
+    except Exception as e: # Catch potential errors from user_repo.get_user_by_username if user not found etc.
+        logger.debug(f"OPDS Basic Auth: User repo lookup or password verification failed for user {identifier}: {str(e)}")
+        pass # Continue to final failure if this path doesn't succeed
     
     # 如果都认证失败，返回401
+    logger.warning(f"OPDS authentication failed for identifier: {identifier}")
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="用户名或密码不正确",

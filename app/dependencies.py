@@ -5,7 +5,7 @@ from typing import Annotated, TypeAlias
 
 from app.config import Settings, get_settings
 from app.database import get_db
-from app.storage import Storage, FileSystemStorage, MemoryStorage
+from app.storage import Storage, FilesystemStorage, MemoryStorage
 from app.repository import (
     UserRepo, UserDatabaseRepo, MemoryUserRepo,
     BookRepo, BookDatabaseRepo, MemoryBookRepo,
@@ -26,7 +26,7 @@ async def get_storage(
 ) -> Storage:
     """根据配置获取适当的存储实现。"""
     if settings.BSTORAGE_TYPE == "fs":
-        return FileSystemStorage(settings.STORAGE_DIR)
+        return FilesystemStorage(settings.BSTORAGE_PATH)
     return MemoryStorage()
 
 @lru_cache()
@@ -42,19 +42,10 @@ async def get_user_repo(
 @lru_cache()
 async def get_auth_service(
     user_repo: UserRepo = Depends(get_user_repo),
+    settings: AppSettings = Depends(get_settings)
 ) -> AuthService:
     """获取认证服务实例。"""
-    return AuthService(user_repo)
-
-@lru_cache()
-async def get_book_shelf(
-    db: DBSession = Depends(), 
-    settings: AppSettings = Depends(),
-    storage: Storage = Depends(get_storage),
-    book_repo: BookRepo = Depends(get_book_repo)
-) -> BookShelf:
-    """获取书架服务实例。"""
-    return BookShelf(book_repo=book_repo, storage=storage)
+    return AuthService(user_repo, settings)
 
 @lru_cache()
 async def get_book_repo(
@@ -65,6 +56,16 @@ async def get_book_repo(
     if settings.BSTORAGE_TYPE == "pg":
         return BookDatabaseRepo(db)
     return MemoryBookRepo()
+
+@lru_cache()
+async def get_book_shelf(
+    db: DBSession = Depends(), 
+    settings: AppSettings = Depends(),
+    storage: Storage = Depends(get_storage),
+    book_repo: BookRepo = Depends(get_book_repo)
+) -> BookShelf:
+    """获取书架服务实例。"""
+    return BookShelf(book_repo=book_repo, storage=storage)
 
 @lru_cache()
 async def get_progress_repo(
